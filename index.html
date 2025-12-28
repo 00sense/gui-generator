@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="https://i.imgur.com/LFhqOZu.png">
-    <title>GUI Generator v9.2</title>
+    <title>GUI Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
@@ -44,6 +44,7 @@
             background: linear-gradient(to right, #fff, #aaa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            text-align: center;
         }
 
         .config-bar {
@@ -56,6 +57,8 @@
             align-items: center;
             gap: 15px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .config-label {
@@ -114,7 +117,7 @@
 
         .hex-input-wrapper { display: flex; flex-direction: column; gap: 15px; }
         .color-picker-group { display: flex; align-items: center; gap: 10px; background: #2a2a2a; padding: 10px; border-radius: 8px; }
-        input[type="color"] { border: none; width: 40px; height: 40px; cursor: pointer; background: none; }
+        input[type="color"] { border: none; width: 40px; height: 40px; cursor: pointer; background: none; flex-shrink: 0; }
         
         .hex-text-input { 
             background: transparent; 
@@ -128,7 +131,6 @@
 
         .current-color-preview { margin-top: 20px; padding: 15px; background: #2a2a2a; border-radius: 8px; text-align: center; color: var(--text-dim); border-left: 4px solid transparent; }
 
-        /* Save Color Section */
         .save-controls {
             margin-top: 15px;
             display: flex;
@@ -157,7 +159,6 @@
         }
         .btn-save:hover { background: var(--success-color); }
 
-        /* Saved Colors List */
         .saved-list {
             display: flex;
             flex-direction: column;
@@ -181,7 +182,7 @@
         }
         .saved-item:hover { background: #2a2a2a; border-color: #444; }
         .saved-item-color {
-            width: 24px; height: 24px; border-radius: 4px; margin-right: 10px; border: 1px solid #444;
+            width: 24px; height: 24px; border-radius: 4px; margin-right: 10px; border: 1px solid #444; flex-shrink: 0;
         }
         .saved-item-name {
             flex: 1; font-size: 13px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -194,10 +195,23 @@
         }
         .btn-delete:hover { color: var(--danger-color); }
 
-        /* Workspace & Output */
         .workspace-panel { display: flex; flex-direction: column; gap: 20px; align-items: center; }
-        .chest-frame { background-color: #c6c6c6; padding: 14px; border: 4px solid #373737; border-radius: 6px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .grid { display: grid; grid-template-columns: repeat(9, 44px); grid-template-rows: repeat(6, 44px); gap: 2px; }
+        
+        .chest-frame { 
+            background-color: #c6c6c6; 
+            padding: 14px; 
+            border: 4px solid #373737; 
+            border-radius: 6px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
+            max-width: 100%;
+        }
+
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(9, 44px); 
+            grid-template-rows: repeat(6, 44px); 
+            gap: 2px; 
+        }
         
         .slot { 
             width: 44px; height: 44px; 
@@ -212,8 +226,8 @@
         .slot:hover { background-color: #9d9d9d; }
         
         .slot-content { 
-            width: 36px; 
-            height: 36px; 
+            width: 80%; 
+            height: 80%; 
             box-shadow: inset 2px 2px 0 rgba(255,255,255,0.3), inset -2px -2px 0 rgba(0,0,0,0.2);
             transition: background 0.1s;
         }
@@ -277,7 +291,7 @@
             border-top: 1px solid var(--border-color); padding-top: 40px;
         }
 
-        .section-header-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .section-header-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
         .section-title { color: white; font-size: 24px; font-weight: 700; display: flex; flex-direction: column; gap: 5px; }
         .section-title span { color: var(--text-dim); font-size: 14px; font-weight: 400; }
 
@@ -294,7 +308,7 @@
 
         .file-item {
             display: flex; justify-content: space-between; align-items: center;
-            background: #252525; padding: 12px 20px; border-radius: 8px; transition: background 0.2s; border: 1px solid transparent;
+            background: #252525; padding: 12px 20px; border-radius: 8px; transition: background 0.2s; border: 1px solid transparent; flex-wrap: wrap; gap: 10px;
         }
         .file-item:hover { background: #2a2a2a; border-color: #333; }
         .file-name { font-family: 'Consolas', monospace; color: var(--text-main); font-size: 15px; }
@@ -310,15 +324,43 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 16px; font-weight: 600;
             border: 1px solid #444; opacity: 0; z-index: 1000; display: flex; align-items: center; gap: 12px;
             transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-width: 90%; white-space: nowrap;
         }
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         .toast::before { content: '✓'; color: var(--success-color); font-weight: bold; font-size: 18px; }
+
+        @media (max-width: 900px) {
+            .app-container { flex-direction: column; align-items: center; }
+            .controls-panel, .output-box, .font-generator-section { width: 100%; max-width: 100%; }
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 20px 10px; }
+            h1 { font-size: 1.8rem; }
+            
+            .config-bar { flex-direction: column; width: 100%; padding: 15px; text-align: center; }
+            .namespace-input { width: 100%; }
+
+            .chest-frame { padding: 8px; border-width: 3px; width: 100%; }
+            .grid { 
+                grid-template-columns: repeat(9, 1fr); 
+                grid-template-rows: repeat(6, auto);
+                gap: 1px;
+                width: 100%;
+            }
+            .slot { width: 100%; height: auto; aspect-ratio: 1 / 1; border-width: 1px; }
+            
+            .section-header-group { flex-direction: column; align-items: flex-start; }
+            .btn-download-all { width: 100%; justify-content: center; }
+            .file-item { flex-direction: column; align-items: flex-start; }
+            .btn-download-single { width: 100%; margin-top: 5px; }
+        }
 
     </style>
 </head>
 <body>
 
-    <h1>Generator GUI <span style="font-size: 0.5em; opacity: 0.5; font-weight: 400;">v9.2</span></h1>
+    <h1>GUI Generator</h1>
 
     <div class="config-bar">
         <span class="config-label">ResourcePack Namespace:</span>
@@ -454,8 +496,6 @@
             updatePreviewDisplay();
         }
 
-        // --- Logic: Saved Colors ---
-
         function loadSavedColors() {
             const stored = localStorage.getItem('guiGen_savedColors');
             if (stored) {
@@ -480,15 +520,15 @@
             const newColor = {
                 name: name,
                 hex: currentSelection.css,
-                id: Date.now() // unikalne ID
+                id: Date.now()
             };
 
             savedColors.push(newColor);
             localStorage.setItem('guiGen_savedColors', JSON.stringify(savedColors));
             
-            nameInput.value = ''; // wyczyść input
+            nameInput.value = ''; 
             renderSavedTab();
-            switchTab('saved'); // przełącz na zakładkę zapisane
+            switchTab('saved'); 
             showToast("Zapisano kolor!");
         }
 
@@ -517,15 +557,11 @@
                     <button class="btn-delete" title="Usuń">×</button>
                 `;
                 
-                // Kliknięcie w element wybiera kolor
                 item.onclick = (e) => {
-                    // Ignoruj jeśli kliknięto w przycisk usuwania
                     if (e.target.classList.contains('btn-delete')) return;
-                    
-                    applyColorSelection(color.hex, color.name, true);
+                    applyColorSelection(color.hex, color.name);
                 };
 
-                // Obsługa przycisku usuwania
                 const deleteBtn = item.querySelector('.btn-delete');
                 deleteBtn.onclick = () => deleteSavedColor(color.id);
 
@@ -533,21 +569,28 @@
             });
         }
 
-        function applyColorSelection(hex, name, isCustomName = false) {
-            currentSelection = { 
-                type: 'hex', // traktujemy zapisane jako hex dla prostoty
-                value: isCustomName ? name : hex, // wyświetlana nazwa
-                css: hex 
-            };
+        function applyColorSelection(hex, displayName) {
+            const normalizedHex = hex.toUpperCase();
+            const standardMatch = MM_COLORS.find(c => c.hex.toUpperCase() === normalizedHex);
+
+            if (standardMatch) {
+                currentSelection = {
+                    type: 'standard',
+                    value: standardMatch.name,
+                    css: standardMatch.hex
+                };
+            } else {
+                currentSelection = {
+                    type: 'hex',
+                    value: hex,
+                    css: hex
+                };
+            }
             
-            // Zaktualizuj inputy hex
             document.getElementById('hex-picker').value = hex;
             document.getElementById('hex-text').value = hex;
-            
             updatePreviewDisplay();
         }
-
-        // --- Logic: Main ---
 
         function updateNamespace() {
             const val = document.getElementById('namespace-input').value.trim();
@@ -560,7 +603,6 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             
-            // Znajdź przycisk odpowiadający tabName
             const buttons = document.querySelectorAll('.tab-btn');
             if (tabName === 'palette') buttons[0].classList.add('active');
             if (tabName === 'hex') buttons[1].classList.add('active');
@@ -637,14 +679,6 @@
                     slot.addEventListener('mousedown', (e) => {
                         if (e.button === 0) {
                             gridData[r][c] = { ...currentSelection };
-                            // Jeśli wybrano saved color, w kodzie ma być hex, a nie nazwa customowa
-                            // Zostawiamy logicznie jak jest, bo type: hex wrzuci wartość HEX do kodu, a standard wrzuci nazwę.
-                            // Ale jeśli user nazwał kolor "Mój Czerwony", w kodzie pluginu chcemy HEX, a nie <Mój Czerwony>.
-                            // Mała poprawka logiki:
-                            if (gridData[r][c].type === 'hex') {
-                                gridData[r][c].value = gridData[r][c].css; 
-                            }
-                            
                             content.style.background = currentSelection.css;
                         } else if (e.button === 2) {
                             gridData[r][c] = null;
@@ -786,7 +820,6 @@
             const toast = document.getElementById('toast');
             toast.textContent = msg;
             toast.style.borderColor = isError ? '#ef4444' : '#444';
-            // usunięcie checkmarka z css dla błędów wymagałoby zmiany klasy, tutaj prosta zmiana tekstu
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
