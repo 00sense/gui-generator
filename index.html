@@ -196,7 +196,30 @@
         }
         .btn-delete:hover { color: var(--danger-color); }
 
-        .workspace-panel { display: flex; flex-direction: column; gap: 20px; align-items: center; }
+        .workspace-panel { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+
+        .grid-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 5px;
+            margin-bottom: 5px;
+        }
+
+        .btn-clear-small {
+            background: #2a2a2a;
+            color: var(--danger-color);
+            border: 1px solid #444;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .btn-clear-small:hover { background: #333; border-color: var(--danger-color); }
         
         .chest-frame { 
             background-color: #c6c6c6; 
@@ -279,22 +302,13 @@
         }
         textarea:hover { border-color: #555; background: #181818; }
         
-        .btn-group { display: flex; gap: 10px; width: 100%; }
-
         .btn-copy { 
-            background-color: var(--accent-color); color: white; flex: 2; padding: 12px; 
+            background-color: var(--accent-color); color: white; width: 100%; padding: 12px; 
             border: none; border-radius: 8px; font-weight: 600; font-size: 14px; 
             cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; 
         }
         .btn-copy:hover { background-color: var(--accent-hover); transform: translateY(-2px); }
         
-        .btn-clear {
-            background-color: var(--danger-color); color: white; flex: 1; padding: 12px;
-            border: none; border-radius: 8px; font-weight: 600; font-size: 14px;
-            cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center;
-        }
-        .btn-clear:hover { background-color: var(--danger-hover); transform: translateY(-2px); }
-
         .instructions { margin-top: 15px; font-size: 12px; color: var(--text-dim); text-align: center; line-height: 1.5; }
         .key { background: #333; padding: 2px 6px; border-radius: 4px; color: white; font-family: monospace; white-space: nowrap; }
 
@@ -421,6 +435,11 @@
         </div>
 
         <div class="workspace-panel">
+            <div class="grid-header">
+                <span style="color:var(--text-dim); font-size:14px; font-weight:600;">Podgląd GUI</span>
+                <button class="btn-clear-small" onclick="clearAll()">🗑️ Wyczyść</button>
+            </div>
+
             <div class="chest-frame">
                 <div class="grid" id="grid"></div>
             </div>
@@ -434,14 +453,9 @@
 
                 <textarea id="output" readonly placeholder="Kod pojawi się tutaj..." onclick="copyToClipboard(this.value)" title="Kliknij, aby skopiować"></textarea>
                 
-                <div class="btn-group">
-                    <button class="btn-copy" onclick="manualCopy()">
-                        Kopiuj Kod
-                    </button>
-                    <button class="btn-clear" onclick="clearAll()" title="Wyczyść całą siatkę">
-                        Wyczyść
-                    </button>
-                </div>
+                <button class="btn-copy" onclick="manualCopy()">
+                    Kopiuj Kod
+                </button>
 
                 <div class="instructions">
                     <span class="key">LPM</span> maluje | <span class="key">PPM</span> czyści<br>
@@ -502,7 +516,7 @@
         ];
 
         let currentNamespace = "gencash";
-        let currentSelection = { type: 'standard', value: 'white', css: '#FFFFFF' };
+        let currentSelection = { type: 'standard', value: 'white', css: '#FFFFFF', name: 'WHITE' };
         let gridData = Array(6).fill().map(() => Array(9).fill(null));
         let savedColors = [];
 
@@ -594,7 +608,7 @@
                 
                 item.onclick = (e) => {
                     if (e.target.classList.contains('btn-delete')) return;
-                    applyColorSelection(color.hex, color.name);
+                    applyColorSelection(color.hex, color.name, true);
                 };
 
                 const deleteBtn = item.querySelector('.btn-delete');
@@ -604,23 +618,33 @@
             });
         }
 
-        function applyColorSelection(hex, displayName) {
+        function applyColorSelection(hex, name, isSaved = false) {
             const normalizedHex = hex.toUpperCase();
             const standardMatch = MM_COLORS.find(c => c.hex.toUpperCase() === normalizedHex);
+            
+            let generatorValue = hex;
+            let type = 'hex';
+            let standardName = null;
 
             if (standardMatch) {
-                currentSelection = {
-                    type: 'standard',
-                    value: standardMatch.name,
-                    css: standardMatch.hex
-                };
-            } else {
-                currentSelection = {
-                    type: 'hex',
-                    value: hex,
-                    css: hex
-                };
+                generatorValue = standardMatch.name;
+                type = 'standard';
+                standardName = standardMatch.name.toUpperCase().replace('_', ' ');
             }
+
+            let displayName;
+            if (isSaved) {
+                displayName = name;
+            } else {
+                displayName = standardName ? standardName : hex;
+            }
+
+            currentSelection = {
+                type: type,
+                value: generatorValue,
+                css: hex,
+                name: displayName
+            };
             
             document.getElementById('hex-picker').value = hex;
             document.getElementById('hex-text').value = hex;
@@ -663,8 +687,7 @@
                 btn.onclick = () => {
                     document.querySelectorAll('.color-swatch').forEach(b => b.classList.remove('selected'));
                     btn.classList.add('selected');
-                    currentSelection = { type: 'standard', value: col.name, css: col.hex };
-                    updatePreviewDisplay();
+                    applyColorSelection(col.hex, col.name, false);
                 };
                 container.appendChild(btn);
             });
@@ -672,18 +695,14 @@
 
         function updateHexFromPicker() {
             const val = document.getElementById('hex-picker').value;
-            document.getElementById('hex-text').value = val;
-            currentSelection = { type: 'hex', value: val, css: val };
-            updatePreviewDisplay();
+            applyColorSelection(val, val, false);
         }
 
         function updateHexFromText() {
             let val = document.getElementById('hex-text').value;
             if(!val.startsWith('#')) val = '#' + val;
             if (/^#[0-9A-F]{6}$/i.test(val)) {
-                document.getElementById('hex-picker').value = val;
-                currentSelection = { type: 'hex', value: val, css: val };
-                updatePreviewDisplay();
+                applyColorSelection(val, val, false);
             }
         }
 
@@ -691,13 +710,8 @@
             const box = document.getElementById('current-selection-display');
             const txt = document.getElementById('current-color-name');
             box.style.borderLeftColor = currentSelection.css;
-            if(currentSelection.type === 'standard') {
-                txt.textContent = currentSelection.value.toUpperCase().replace('_', ' ');
-                txt.style.color = currentSelection.css;
-            } else {
-                txt.textContent = currentSelection.value;
-                txt.style.color = currentSelection.css;
-            }
+            txt.textContent = currentSelection.name;
+            txt.style.color = currentSelection.css;
         }
 
         function initGrid() {
@@ -725,10 +739,12 @@
                     let pressTimer;
                     slot.addEventListener('touchstart', (e) => {
                         pressTimer = setTimeout(() => {
-                            gridData[r][c] = null;
-                            content.style.background = 'transparent';
-                            generateCommand();
-                            if (navigator.vibrate) navigator.vibrate(50); 
+                            if (gridData[r][c] !== null) {
+                                gridData[r][c] = null;
+                                content.style.background = 'transparent';
+                                generateCommand();
+                                if (navigator.vibrate) navigator.vibrate(50);
+                            }
                         }, 500); 
                     });
 
