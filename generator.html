@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GUI Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --success-color: #22c55e;
+            --success-hover: #16a34a;
+            --slot-bg: #8b8b8b;
+            --slot-shadow-dark: #373737;
+            --slot-shadow-light: #ffffff;
+            --text-main: #e5e5e5;
+            --text-dim: #a3a3a3;
+            --border-color: #333;
+        }
+
+        * { box-sizing: border-box; outline: none; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #fff, #aaa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* --- NAMESPACE INPUT --- */
+        .config-bar {
+            background: var(--card-bg);
+            padding: 15px 30px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .config-label {
+            font-size: 14px;
+            color: var(--text-dim);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .namespace-input {
+            background: #121212;
+            border: 1px solid var(--border-color);
+            color: var(--accent-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 16px;
+            width: 250px;
+            transition: 0.2s;
+            text-transform: none !important;
+        }
+        .namespace-input:focus { border-color: var(--accent-color); }
+
+        /* --- APP LAYOUT --- */
+        .app-container {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 1300px;
+            margin-bottom: 60px;
+        }
+
+        /* --- CONTROLS --- */
+        .controls-panel {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            width: 340px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tabs { display: flex; background: #2a2a2a; padding: 4px; border-radius: 8px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; background: transparent; border: none; color: var(--text-dim); padding: 8px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        .tab-btn.active { background: var(--accent-color); color: white; }
+
+        .panel { display: none; animation: fadeIn 0.3s ease; }
+        .panel.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .color-swatch { height: 40px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .color-swatch:hover { transform: scale(1.05); }
+        .color-swatch.selected { border-color: white; box-shadow: 0 0 0 2px var(--accent-color); z-index: 2; }
+
+        .hex-input-wrapper { display: flex; flex-direction: column; gap: 15px; }
+        .color-picker-group { display: flex; align-items: center; gap: 10px; background: #2a2a2a; padding: 10px; border-radius: 8px; }
+        input[type="color"] { border: none; width: 40px; height: 40px; cursor: pointer; background: none; }
+        
+        .hex-text-input { 
+            background: transparent; 
+            border: none; 
+            color: white; 
+            font-family: monospace; 
+            font-size: 16px; 
+            width: 100%; 
+            text-transform: uppercase; 
+        }
+
+        .current-color-preview { margin-top: 20px; padding: 15px; background: #2a2a2a; border-radius: 8px; text-align: center; color: var(--text-dim); border-left: 4px solid transparent; }
+
+        /* --- WORKSPACE --- */
+        .workspace-panel { display: flex; flex-direction: column; gap: 20px; align-items: center; }
+        .chest-frame { background-color: #c6c6c6; padding: 14px; border: 4px solid #373737; border-radius: 6px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .grid { display: grid; grid-template-columns: repeat(9, 44px); grid-template-rows: repeat(6, 44px); gap: 2px; }
+        .slot { width: 44px; height: 44px; background-color: var(--slot-bg); border-top: 2px solid var(--slot-shadow-dark); border-left: 2px solid var(--slot-shadow-dark); border-bottom: 2px solid var(--slot-shadow-light); border-right: 2px solid var(--slot-shadow-light); cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        .slot:hover { background-color: #9d9d9d; }
+        .slot-content { width: 26px; height: 26px; border-radius: 2px; box-shadow: inset 0 0 3px rgba(0,0,0,0.4); border: 1px solid rgba(0,0,0,0.1); }
+
+        /* --- OUTPUT --- */
+        .output-box { width: 100%; max-width: 450px; background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        textarea { width: 100%; height: 100px; background: #121212; color: #b8b8b8; border: 1px solid var(--border-color); padding: 15px; font-family: 'Consolas', monospace; font-size: 13px; border-radius: 8px; resize: none; margin-bottom: 15px; cursor: pointer; transition: 0.2s; }
+        textarea:hover { border-color: #555; background: #181818; }
+        
+        .btn-copy { 
+            background-color: var(--accent-color); 
+            color: white; 
+            width: 100%; /* Full width now */
+            padding: 12px; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: 600; 
+            font-size: 14px; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        .btn-copy:hover { background-color: var(--accent-hover); transform: translateY(-2px); }
+        
+        .instructions { margin-top: 15px; font-size: 12px; color: var(--text-dim); text-align: center; display: flex; gap: 15px; align-items: center; justify-content: center; }
+        .key { background: #333; padding: 2px 6px; border-radius: 4px; color: white; font-family: monospace; }
+
+        /* --- FILE LIST SECTION --- */
+        .font-generator-section {
+            width: 100%;
+            max-width: 800px;
+            margin-top: 40px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 40px;
+        }
+
+        .section-header-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .section-title span { color: var(--text-dim); font-size: 14px; font-weight: 400; }
+
+        .btn-download-all {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .btn-download-all:hover { background-color: var(--accent-hover); transform: translateY(-2px); }
+
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #252525;
+            padding: 12px 20px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .file-item:hover {
+            background: #2a2a2a;
+            border-color: #333;
+        }
+
+        .file-name {
+            font-family: 'Consolas', monospace;
+            color: var(--text-main);
+            font-size: 15px;
+        }
+        
+        .btn-download-single {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-download-single:hover {
+            background: var(--success-color);
+        }
+
+        /* --- TOAST --- */
+        .toast {
+            position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: #222; color: white; padding: 16px 32px; border-radius: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 16px; font-weight: 600;
+            border: 1px solid #444; opacity: 0; z-index: 1000; display: flex; align-items: center; gap: 12px;
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast::before { content: '✓'; color: var(--success-color); font-weight: bold; font-size: 18px; }
+
+    </style>
+</head>
+<body>
+
+    <h1>Generator GUI <span style="font-size: 0.5em; opacity: 0.5; font-weight: 400;">v7.0</span></h1>
+
+    <div class="config-bar">
+        <span class="config-label">ResourcePack Namespace:</span>
+        <input type="text" id="namespace-input" class="namespace-input" value="gencash" oninput="updateNamespace()">
+    </div>
+
+    <div class="app-container">
+        
+        <div class="controls-panel">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('palette')">Paleta</button>
+                <button class="tab-btn" onclick="switchTab('hex')">HEX</button>
+            </div>
+
+            <div id="panel-palette" class="panel active">
+                <div class="palette-grid" id="palette-container"></div>
+            </div>
+
+            <div id="panel-hex" class="panel">
+                <div class="hex-input-wrapper">
+                    <label style="color:var(--text-dim); font-size:14px;">Wybierz kolor HEX:</label>
+                    <div class="color-picker-group">
+                        <input type="color" id="hex-picker" value="#ff0000" oninput="updateHexFromPicker()">
+                        <input type="text" id="hex-text" class="hex-text-input" value="#FF0000" oninput="updateHexFromText()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="current-color-preview" id="current-selection-display">
+                Aktywny kolor: <br><strong id="current-color-name">White</strong>
+            </div>
+        </div>
+
+        <div class="workspace-panel">
+            <div class="chest-frame">
+                <div class="grid" id="grid"></div>
+            </div>
+
+            <div class="output-box">
+                <textarea id="output" readonly placeholder="Kod pojawi się tutaj..." onclick="copyToClipboard(this.value)" title="Kliknij, aby skopiować"></textarea>
+                
+                <button class="btn btn-copy" onclick="manualCopy()">
+                    Kopiuj Kod
+                </button>
+
+                <div class="instructions">
+                    <div>
+                        <span class="key">LPM</span> maluje 
+                    </div>
+
+                    <div>
+                        <span class="key">PPM</span> czyści 
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="font-generator-section">
+        <div class="section-header-group">
+            <div class="section-title">
+                Pliki Fontów
+                <span>Gotowe konfiguracje .json</span>
+            </div>
+            <button class="btn-download-all" onclick="downloadAllFiles()">
+                <span>📦 Pobierz Wszystkie (.zip)</span>
+            </button>
+        </div>
+
+        <div class="file-list" id="file-list">
+            </div>
+    </div>
+
+    <div id="toast" class="toast">Skopiowano do schowka!</div>
+
+    <script>
+        // --- CONSTANTS ---
+        const CHAR_SLOT = '㋛';
+        const CHAR_LEFT = '㋺';
+        const CHAR_RIGHT = '㋒';
+        
+        const ROW_DATA = [
+            { id: 1, ascent: -5 },
+            { id: 2, ascent: -23 },
+            { id: 3, ascent: -41 },
+            { id: 4, ascent: -59 },
+            { id: 5, ascent: -77 },
+            { id: 6, ascent: -95 }
+        ];
+
+        const MM_COLORS = [
+            { name: "white", hex: "#FFFFFF" },
+            { name: "gray", hex: "#AAAAAA" },
+            { name: "dark_gray", hex: "#555555" },
+            { name: "black", hex: "#000000" },
+            { name: "red", hex: "#FF5555" },
+            { name: "dark_red", hex: "#AA0000" },
+            { name: "gold", hex: "#FFAA00" },
+            { name: "yellow", hex: "#FFFF55" },
+            { name: "green", hex: "#55FF55" },
+            { name: "dark_green", hex: "#00AA00" },
+            { name: "aqua", hex: "#55FFFF" },
+            { name: "dark_aqua", hex: "#00AAAA" },
+            { name: "blue", hex: "#5555FF" },
+            { name: "dark_blue", hex: "#0000AA" },
+            { name: "light_purple", hex: "#FF55FF" },
+            { name: "dark_purple", hex: "#AA00AA" }
+        ];
+
+        // --- STATE ---
+        let currentNamespace = "gencash";
+        let currentSelection = { type: 'standard', value: 'white', css: '#FFFFFF' };
+        let gridData = Array(6).fill().map(() => Array(9).fill(null));
+
+        function init() {
+            renderPalette();
+            initGrid();
+            renderFileList();
+            updatePreviewDisplay();
+        }
+
+        // --- NAMESPACE LOGIC ---
+        function updateNamespace() {
+            const val = document.getElementById('namespace-input').value.trim();
+            // Allow typing, update state if not empty (or allow empty temporarily)
+            currentNamespace = val || "gencash"; 
+            generateCommand();
+            renderFileList();
+        }
+
+        // --- UI LOGIC ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`panel-${tabName}`).classList.add('active');
+            if(tabName === 'hex') updateHexFromPicker();
+            else if(tabName === 'palette') {
+                const sel = document.querySelector('.color-swatch.selected');
+                if(sel) sel.click();
+            }
+        }
+
+        function renderPalette() {
+            const container = document.getElementById('palette-container');
+            MM_COLORS.forEach(col => {
+                const btn = document.createElement('div');
+                btn.className = 'color-swatch';
+                btn.style.backgroundColor = col.hex;
+                btn.title = col.name;
+                if (col.name === 'white') btn.classList.add('selected');
+                btn.onclick = () => {
+                    document.querySelectorAll('.color-swatch').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    currentSelection = { type: 'standard', value: col.name, css: col.hex };
+                    updatePreviewDisplay();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function updateHexFromPicker() {
+            const val = document.getElementById('hex-picker').value;
+            document.getElementById('hex-text').value = val;
+            currentSelection = { type: 'hex', value: val, css: val };
+            updatePreviewDisplay();
+        }
+
+        function updateHexFromText() {
+            let val = document.getElementById('hex-text').value;
+            if(!val.startsWith('#')) val = '#' + val;
+            if (/^#[0-9A-F]{6}$/i.test(val)) {
+                document.getElementById('hex-picker').value = val;
+                currentSelection = { type: 'hex', value: val, css: val };
+                updatePreviewDisplay();
+            }
+        }
+
+        function updatePreviewDisplay() {
+            const box = document.getElementById('current-selection-display');
+            const txt = document.getElementById('current-color-name');
+            box.style.borderLeftColor = currentSelection.css;
+            if(currentSelection.type === 'standard') {
+                txt.textContent = currentSelection.value.toUpperCase().replace('_', ' ');
+                txt.style.color = currentSelection.css;
+            } else {
+                txt.textContent = currentSelection.value;
+                txt.style.color = currentSelection.css;
+            }
+        }
+
+        // --- GRID ---
+        function initGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c < 9; c++) {
+                    let slot = document.createElement('div');
+                    slot.className = 'slot';
+                    let content = document.createElement('div');
+                    content.className = 'slot-content';
+                    slot.appendChild(content);
+
+                    slot.addEventListener('mousedown', (e) => {
+                        if (e.button === 0) {
+                            gridData[r][c] = { ...currentSelection };
+                            content.style.background = currentSelection.css;
+                        } else if (e.button === 2) {
+                            gridData[r][c] = null;
+                            content.style.background = 'transparent';
+                        }
+                        generateCommand();
+                    });
+                    slot.addEventListener('contextmenu', e => e.preventDefault());
+                    grid.appendChild(slot);
+                }
+            }
+        }
+
+        // --- COMMAND GENERATOR ---
+        function generateCommand() {
+            let result = "";
+            let globalCursorPos = 0;
+            let lastRow = -1;
+
+            for (let r = 0; r < 6; r++) {
+                let rowHasItems = gridData[r].some(col => col !== null);
+                if (rowHasItems) {
+                    for (let c = 0; c < 9; c++) {
+                        let data = gridData[r][c];
+                        if (data) {
+                            if (r !== lastRow) {
+                                result += `<font:${currentNamespace}:row_${r + 1}>`;
+                                lastRow = r;
+                            }
+                            let targetPos = c;
+                            let movementNeeded = targetPos - globalCursorPos;
+
+                            if (movementNeeded > 0) result += CHAR_RIGHT.repeat(movementNeeded);
+                            else if (movementNeeded < 0) result += CHAR_LEFT.repeat(Math.abs(movementNeeded));
+
+                            result += `<${data.value}>${CHAR_SLOT}`;
+                            globalCursorPos = targetPos + 1;
+                        }
+                    }
+                }
+            }
+
+            const output = document.getElementById('output');
+            output.value = result;
+        }
+
+        // --- FILE GENERATION HELPERS ---
+        function createJsonContent(rowId, ascent) {
+            return {
+                "providers": [
+                    {
+                        "type": "bitmap",
+                        "file": `${currentNamespace}:colored_slot.png`,
+                        "ascent": ascent,
+                        "height": 16,
+                        "chars": [ "㋛" ]
+                    },
+                    {
+                        "type": "space",
+                        "advances": {
+                            "㋺": -18,
+                            "㋒": 18
+                        }
+                    }
+                ]
+            };
+        }
+
+        // --- RENDER FILE LIST ---
+        function renderFileList() {
+            const list = document.getElementById('file-list');
+            list.innerHTML = '';
+
+            ROW_DATA.forEach(row => {
+                const fileName = `row_${row.id}.json`;
+                const content = JSON.stringify(createJsonContent(row.id, row.ascent), null, 4);
+
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                
+                item.innerHTML = `
+                    <span class="file-name">${fileName}</span>
+                    <button class="btn-download-single" id="btn-dl-${row.id}">
+                        Pobierz
+                    </button>
+                `;
+                list.appendChild(item);
+
+                // Add event listener programmatically
+                document.getElementById(`btn-dl-${row.id}`).onclick = () => downloadSingleFile(fileName, content);
+            });
+        }
+
+        // --- DOWNLOAD SINGLE ---
+        function downloadSingleFile(filename, content) {
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+
+        // --- DOWNLOAD ALL (ZIP) ---
+        function downloadAllFiles() {
+            if (typeof JSZip === 'undefined') {
+                alert("Błąd: Biblioteka JSZip nie załadowała się.");
+                return;
+            }
+
+            const zip = new JSZip();
+            ROW_DATA.forEach(row => {
+                const fileName = `row_${row.id}.json`;
+                const content = JSON.stringify(createJsonContent(row.id, row.ascent), null, 4);
+                zip.file(fileName, content);
+            });
+
+            zip.generateAsync({type:"blob"}).then(function(content) {
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(content);
+                link.download = `font_files_${currentNamespace}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+
+        // --- UTILS ---
+        function copyToClipboard(text) {
+            if (!text || text.trim() === "") return;
+            navigator.clipboard.writeText(text).then(() => showToast()).catch(console.error);
+        }
+
+        function manualCopy() {
+            const text = document.getElementById('output').value;
+            if(!text) generateCommand();
+            setTimeout(() => copyToClipboard(document.getElementById('output').value), 100);
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 4000);
+        }
+
+        init();
+    </script>
+</body>
+</html>
